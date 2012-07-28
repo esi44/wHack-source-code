@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="CloakDLL.cpp">
+      <Filter>CloakDLL</Filter>
+    </ClCompile>
+    <ClCompile Include="WC3.cpp" />
+    <ClCompile Include="Mute.cpp">
+      <Filter>Mute</Filter>
+    </ClCompile>
+    <ClCompile Include="Feed.cpp">
+      <Filter>Feed</Filter>
+    </ClCompile>
+    <ClCompile Include="SafeClick.cpp">
+      <Filter>MapHack</Filter>
+    </ClCompile>
+    <ClCompile Include="MapHack.cpp">
+      <Filter>MapHack</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="System.h" />
+    <ClInclude Include="CloakDLL.h">
+      <Filter>CloakDLL</Filter>
+    </ClInclude>
+    <ClInclude Include="WC3Ptrs.h" />
+    <ClInclude Include="WC3.h" />
+    <ClInclude Include="Mute.h">
+      <Filter>Mute</Filter>
+    </ClInclude>
+    <ClInclude Include="Feed.h">
+      <Filter>Feed</Filter>
+    </ClInclude>
+    <ClInclude Include="SafeClick.h">
+      <Filter>MapHack</Filter>
+    </ClInclude>
+    <ClInclude Include="MapHack.h">
+      <Filter>MapHack</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CloakDLL">
+      <UniqueIdentifier>{e47313d4-fcd2-4b0c-b2e4-b716b5c09e9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Mute">
+      <UniqueIdentifier>{3b6dea97-0c93-4d7c-a572-51a1c53309b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Feed">
+      <UniqueIdentifier>{542bb06a-ff2b-4a4b-988f-7f262b9b6f7b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MapHack">
+      <UniqueIdentifier>{02e1c3a3-5462-4338-a936-a3ad7f0316d8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
