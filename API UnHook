@@ -1,0 +1,140 @@
+Unit: 
+{ Local Usermode API Unhooker 
+
+  Author: steve10120 
+  Description: Read and patch the original bytes from a DLL's export at runtime, thus unhooking it. 
+  Website: ic0de.org 
+  History: First try 
+
+}
+
+unit uUnHookAPI;
+
+interface
+
+uses Windows, SysUtils;
+
+type
+  TByteArray = array of Byte;
+
+function UnHookAPI(szLibName:string; szProcName:string):Boolean;
+
+implementation
+
+function FileToBytes(sPath:string; var bFile:TByteArray):Boolean;
+var
+hFile:    THandle;
+dSize:    DWORD;
+dRead:    DWORD;
+begin
+  Result := FALSE;
+  if FileExists(sPath) then
+  begin
+    hFile := CreateFile(PChar(sPath), GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, 0, 0);
+    if hFile <> 0 then
+    begin
+      dSize := GetFileSize(hFile, nil);
+      SetFilePointer(hFile, 0, nil, FILE_BEGIN);
+      SetLength(bFile, dSize);
+      if ReadFile(hFile, bFile[0], dSize, dRead, nil) then
+        Result := TRUE;
+      CloseHandle(hFile);
+    end;
+  end;
+end;
+
+function RVAToOffset(dwRVA:DWORD; dwVA:DWORD; dwRaw:DWORD):DWORD;
+begin
+  Result := dwRVA - dwVA + dwRaw;
+end;
+
+function UnHookAPI(szLibName:string; szProcName:string):Boolean;
+var
+  bFile:      TByteArray;
+  IDH:        TImageDosHeader;
+  INH:        TImageNtHeaders;
+  ISH:        TImageSectionHeader;
+  IED:        TImageExportDirectory;
+  i:          DWORD;
+  dwOffset:   DWORD;
+  dwNamePos:  DWORD;
+  dwNumbPos:  DWORD;
+  dwFuncPos:  DWORD;
+  szExport:   string;
+  bOrigBuff:  TByteArray;
+  bBuff:      TByteArray;
+  hProc:      Pointer;
+  dwNull:     DWORD;
+begin
+  Result := FALSE;
+  if FileToBytes(szLibName, bFile) then
+  begin
+    CopyMemory(@IDH, @bFile[0], 64);
+    if IDH.e_magic = IMAGE_DOS_SIGNATURE then
+    begin
+      CopyMemory(@INH, @bFile[IDH._lfanew], 248);
+      if INH.Signature = IMAGE_NT_SIGNATURE then
+      begin
+        if (INH.OptionalHeader.DataDirectory[0].VirtualAddress > 0) and (INH.OptionalHeader.DataDirectory[0].Size > 0) then
+        begin
+          for i := 0 to INH.FileHeader.NumberOfSections - 1 do
+          begin
+            CopyMemory(@ISH, @bFile[IDH._lfanew + 248 + i * 40], 40);
+            if (INH.OptionalHeader.DataDirectory[0].VirtualAddress >= ISH.VirtualAddress) and (INH.OptionalHeader.DataDirectory[0].VirtualAddress <= (ISH.VirtualAddress + ISH.Misc.VirtualSize)) then
+            begin
+              dwOffset := RVAToOffset(INH.OptionalHeader.DataDirectory[0].VirtualAddress, ISH.VirtualAddress, ISH.PointerToRawData);
+              Break;
+            end;
+          end;
+
+          CopyMemory(@IED, @bFile[dwOffset], 40);
+          for i := 0 to IED.NumberOfNames - 1 do
+          begin
+            dwNamePos := 0;
+            dwNumbPos := 0;
+            dwFuncPos := 0;
+            dwOffset := RVAToOffset(DWORD(IED.AddressOfNames), ISH.VirtualAddress, ISH.PointerToRawData);
+            CopyMemory(@dwNamePos, @bFile[dwOffset + i * 4], 4);
+            dwNamePos := RVAToOffset(dwNamePos, ISH.VirtualAddress, ISH.PointerToRawData);
+            szExport := PChar(Pointer(@bFile[dwNamePos]));
+            if szExport = szProcName then
+            begin
+              dwOffset := RVAToOffset(DWORD(IED.AddressOfNameOrdinals), ISH.VirtualAddress, ISH.PointerToRawData);
+              CopyMemory(@dwNumbPos, @bFile[dwOffset + i * 2], 2);
+              dwOffset := RVAToOffset(DWORD(IED.AddressOfFunctions), ISH.VirtualAddress, ISH.PointerToRawData);
+              CopyMemory(@dwFuncPos, @bFile[dwOffset + dwNumbPos * 4], 4);
+              SetLength(bOrigBuff, 512);
+              ZeroMemory(@bOrigBuff[0], 512);
+              dwFuncPos := RVAToOffset(dwFuncPos, ISH.VirtualAddress, ISH.PointerToRawData);
+              CopyMemory(@bOrigBuff[0], @bFile[dwFuncPos], 512);
+              hProc := GetProcAddress(LoadLibrary(PChar(szLibName)), PChar(szProcName));
+              SetLength(bBuff, 512);
+              ZeroMemory(@bBuff[0], 512);
+              VirtualProtect(hProc, 512, PAGE_EXECUTE_READWRITE, dwNull);
+              ReadProcessMemory(INVALID_HANDLE_VALUE, hProc, @bBuff[0], 512, dwNull);
+              if bBuff[0] <> bOrigBuff[0] then
+              begin
+                WriteProcessMemory(INVALID_HANDLE_VALUE, hProc, @bOrigBuff[0], 512, dwNull);
+                Result := TRUE;
+              end;
+              Break;
+            end;
+          end;
+        end;
+      end;
+    end;
+  end;
+end;
+
+end.
+/////////////////
+//MODO DE USAR//
+///////////////
+Usage:
+var
+  szSysPath:  array[0..255] of Char;
+begin
+  GetSystemDirectory(szSysPath, 256);
+  if UnHookAPI(szSysPath + '\ntdll.dll', 'NtWriteVirtualMemory') then
+    MessageBox(0, 'Unhooked', nil, 0);
+end.
